@@ -1,0 +1,38 @@
+{
+  "manifest_version": 3,
+  "name": "Grammar Checker",
+  "version": "1.0",
+  "description": "A Chrome extension to check grammar using a FastAPI backend.",
+  "permissions": [
+      "activeTab",
+      "scripting",
+      "storage"
+  ],
+  "host_permissions": ["<all_urls>", "http://127.0.0.1:5000"],
+
+  "background": {
+      "service_worker": "background.js"
+  },
+  
+  "action": {
+      "default_popup": "popup.html",
+      "default_title": "Grammar Checker"
+  },
+  "icons": {
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+  },
+  "content_scripts": [{
+      "matches": ["<all_urls>"],
+      "js": ["content2.js"],
+     
+      "run_at": "document_end"
+  }],
+  "web_accessible_resources": [
+    {
+      "resources": ["popup.html"],
+      "matches": ["<all_urls>"]
+    }
+    ]   
+
+}

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Grammar Bot</title>
+  <link rel="stylesheet" href="popup.css">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+  <div id="grammar-popup">
+    <div class="header">
+      <div class="logo">
+        <img src="logo.png" alt="Logo" />
+      </div>
+      <h2>Grammar Bot</h2>
+      <p class="subtitle">Writing Enhancement</p>
+    </div>
+    
+    <div class="content">
+      <div class="correction-container">
+        <div class="label">
+          <i class="fas fa-wand-magic-sparkles"></i>
+          <span>Suggested Correction</span>
+        </div>
+        <div class="card">
+          <p id="correction">Loading...</p>
+        </div>
+      </div>
+      
+      <div class="explanation-container">
+        <div class="label">
+          <i class="fas fa-lightbulb"></i>
+          <span>Explanation</span>
+        </div>
+        <div class="card">
+          <p id="explanation"></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="button-container">
+      <button id="accept-btn">
+        <i class="fas fa-check"></i> Accept
+      </button>
+      <button id="dismiss-btn">
+        <i class="fas fa-xmark"></i> Dismiss
+      </button>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
