@@ -9,51 +9,20 @@
 
         // Create floating button
         let btn = document.createElement("button");
-        // btn.innerText = "📝 Check Grammar";
+        btn.innerText = "G";
         btn.id = "grammar-check-btn";
         Object.assign(btn.style, {
             position: "fixed",
             bottom: "20px",
             right: "20px",
             padding: "10px 15px",
-            background: "#007bff",
+            background: "#818cf8",
             color: "white",
             border: "none",
             borderRadius: "5px",
             cursor: "pointer",
             zIndex: "9999"
         });
-
-        // Create image element for logo
-        let img = document.createElement("img");
-        img.src = "logo.png"; // Replace with the actual path to your logo
-        img.alt = "Grammar Check";
-        Object.assign(img.style, {
-            width: "32px",  // Adjust as needed
-            height: "32px", // Adjust as needed
-            objectFit: "contain" // Ensures proper scaling
-        });
-
-        // Style the button to be round
-        Object.assign(btn.style, {
-            position: "fixed",
-            bottom: "20px",
-            right: "20px",
-            width: "50px", // Set width and height to the same value
-            height: "50px",
-            background: "#007bff",
-            border: "none",
-            borderRadius: "50%", // Makes it a circle
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            zIndex: "9999",
-            padding: "0" // Remove padding to avoid misalignment
-        });
-
-        // Append the image inside the button
-        btn.appendChild(img);
 
         document.body.appendChild(btn);
 
@@ -73,25 +42,80 @@
         });
         document.body.appendChild(popup);
 
-        // Button Click Event - Fetch Grammar Correction
-        btn.addEventListener("click", function() {
+        // Add a variable to store the last selection
+        let lastSelection = null;
+
+        // Function to debounce events
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // Single mouseup event listener with debounce
+        document.addEventListener('mouseup', debounce(function() {
             let selectedText = window.getSelection().toString().trim();
-            if (selectedText) {
-                chrome.runtime.sendMessage({ action: "grammarCheck", text: selectedText });
-            } else {
-                alert("Please select text to check.");
+            if (selectedText && selectedText.length > 1) {
+                let selection = window.getSelection();
+                let range = selection.getRangeAt(0);
+                // Store the range
+                lastSelection = range.cloneRange();
+                console.log("Text selected:", selectedText);
+                console.log("Selection stored:", lastSelection);
+                chrome.runtime.sendMessage({ 
+                    action: "grammarCheck", 
+                    text: selectedText,
+                    rangeData: {
+                        startOffset: range.startOffset,
+                        endOffset: range.endOffset
+                    }
+                });
             }
+        }, 500));
+
+        // Add button click handler to show popup
+        btn.addEventListener('click', function() {
+            popup.style.display = popup.style.display === "none" ? "block" : "none";
         });
 
         // Listen for Response from Backend
         chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             if (message.action === "showCorrection") {
+                // Handle inline highlighting
+                if (message.corrections) {
+                    console.log("Corrections received:", message.corrections);
+                    highlightErrors(message.corrections);
+                }
+                
+                // Send data to popup but don't show it automatically
                 popup.contentWindow.postMessage({
                     action: "showCorrection",
                     correctedText: message.correctedText,
-                    explanation: message.explanation
+                    explanation: message.explanation,
+                    corrections: message.corrections
                 }, "*");
-                popup.style.display = "block";
+                // Don't automatically show popup here anymore
+            } else if (message.action === "replaceText" && lastSelection) {
+                // First, remove any existing highlights
+                const existingHighlights = document.querySelectorAll('.grammar-highlight-container');
+                existingHighlights.forEach(highlight => {
+                    const parent = highlight.parentNode;
+                    const text = highlight.textContent;
+                    parent.removeChild(highlight);
+                });
+
+                // Then insert the new text
+                lastSelection.deleteContents();
+                lastSelection.insertNode(document.createTextNode(message.correctedText));
+                
+                // Clear the stored selection after use
+                lastSelection = null;
             }
         });
 
@@ -101,5 +125,61 @@
                 popup.style.display = "none";
             }
         });
-    }, 2000); // Delay to ensure DOM is loaded
+
+        // Function to highlight errors in the text
+        function highlightErrors(corrections) {
+            if (!lastSelection) return;
+            
+            console.log("Attempting to highlight:", corrections);
+            console.log("Using selection:", lastSelection);
+            
+            let span = document.createElement('span');
+            span.className = 'grammar-highlight-container';
+            
+            // Use the stored selection for highlighting
+            lastSelection.surroundContents(span);
+            
+            // Add highlighting and tooltips for each correction
+            corrections.forEach(correction => {
+                const text = span.textContent;
+                const markedText = text.replace(
+                    correction.original,
+                    `<span class="grammar-error" 
+                           data-correction="${correction.correction}"
+                           data-explanation="${correction.explanation}"
+                           title="${correction.correction}: ${correction.explanation}"
+                    >${correction.original}</span>`
+                );
+                span.innerHTML = markedText;
+            });
+        }
+
+        // Add styles for highlights and tooltips
+        const style = document.createElement('style');
+        style.textContent = `
+            .grammar-error {
+                background-color: #ffd7d7;
+                border-bottom: 2px solid #ff6b6b;
+                cursor: help;
+                position: relative;
+            }
+            
+            .grammar-error:hover::after {
+                content: attr(title);
+                position: absolute;
+                bottom: 100%;
+                left: 50%;
+                transform: translateX(-50%);
+                background: #333;
+                color: white;
+                padding: 5px 10px;
+                border-radius: 4px;
+                font-size: 14px;
+                white-space: nowrap;
+                z-index: 10001;
+            }
+        `;
+        document.head.appendChild(style);
+
+    }, 1000); // Delay to ensure DOM is loaded
 })();
