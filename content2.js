@@ -79,34 +79,30 @@
             }
         }, 500));
 
-        // Add button click handler to show popup
-        btn.addEventListener('click', function() {
-            popup.style.display = popup.style.display === "none" ? "block" : "none";
-        });
-
         // Listen for Response from Backend
         chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             if (message.action === "showCorrection") {
-                // Handle inline highlighting
+                // Handle inline highlighting immediately
                 if (message.corrections) {
                     console.log("Corrections received:", message.corrections);
                     highlightErrors(message.corrections);
+                    
+                    // Show popup immediately when corrections are received
+                    popup.style.display = "block";
                 }
                 
-                // Send data to popup but don't show it automatically
+                // Send data to popup
                 popup.contentWindow.postMessage({
                     action: "showCorrection",
                     correctedText: message.correctedText,
                     explanation: message.explanation,
                     corrections: message.corrections
                 }, "*");
-                // Don't automatically show popup here anymore
             } else if (message.action === "replaceText" && lastSelection) {
                 // First, remove any existing highlights
                 const existingHighlights = document.querySelectorAll('.grammar-highlight-container');
                 existingHighlights.forEach(highlight => {
                     const parent = highlight.parentNode;
-                    const text = highlight.textContent;
                     parent.removeChild(highlight);
                 });
 
@@ -114,12 +110,20 @@
                 lastSelection.deleteContents();
                 lastSelection.insertNode(document.createTextNode(message.correctedText));
                 
-                // Clear the stored selection after use
+                // Clear the stored selection and hide popup after replacement
                 lastSelection = null;
+                popup.style.display = "none";
             }
         });
 
-        // Listen for messages from iframe
+        // Button click now just toggles popup visibility
+        btn.addEventListener('click', function() {
+            if (popup.style.display === "block") {
+                popup.style.display = "none";
+            }
+        });
+
+        // Listen for messages from iframe (like close button click)
         window.addEventListener("message", (event) => {
             if (event.data.action === "closePopup") {
                 popup.style.display = "none";
@@ -136,32 +140,40 @@
             let span = document.createElement('span');
             span.className = 'grammar-highlight-container';
             
-            // Use the stored selection for highlighting
-            lastSelection.surroundContents(span);
-            
-            // Add highlighting and tooltips for each correction
-            corrections.forEach(correction => {
-                const text = span.textContent;
-                const markedText = text.replace(
-                    correction.original,
-                    `<span class="grammar-error" 
-                           data-correction="${correction.correction}"
-                           data-explanation="${correction.explanation}"
-                           title="${correction.correction}: ${correction.explanation}"
-                    >${correction.original}</span>`
-                );
-                span.innerHTML = markedText;
-            });
+            try {
+                // Use the stored selection for highlighting
+                lastSelection.surroundContents(span);
+                
+                // Add highlighting and tooltips for each correction
+                corrections.forEach(correction => {
+                    const text = span.textContent;
+                    const markedText = text.replace(
+                        correction.original,
+                        `<span class="grammar-error" 
+                               data-correction="${correction.correction}"
+                               data-explanation="${correction.explanation}"
+                               title="${correction.correction}: ${correction.explanation}"
+                        >${correction.original}</span>`
+                    );
+                    span.innerHTML = markedText;
+                });
+            } catch (error) {
+                console.error("Error in highlighting:", error);
+            }
         }
 
         // Add styles for highlights and tooltips
         const style = document.createElement('style');
         style.textContent = `
+            .grammar-highlight-container {
+                display: inline;
+            }
             .grammar-error {
-                background-color: #ffd7d7;
-                border-bottom: 2px solid #ff6b6b;
+                background-color:rgb(219, 211, 250);
+                border-bottom: 2px solid #c4b5fd;
                 cursor: help;
                 position: relative;
+                display: inline;
             }
             
             .grammar-error:hover::after {
