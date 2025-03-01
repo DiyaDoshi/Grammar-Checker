@@ -35,22 +35,14 @@ async def root():
 async def grammar_check(data: GrammarCheckRequest):
     print("📩 Received text for grammar check:", data.text)
 
-    # Create a prompt for grammar checking
     grammar_prompt = f"""
-   Please analyze the following text for grammar, spelling, and style issues. Provide:
+    Analyze the following text for grammar, spelling, and style issues. Format your response exactly as follows:
 
-    1. The complete corrected text first
-    2. Then list each correction with:
-        - Type of correction (e.g., "Spelling error", "Grammar issue", "Word choice")
-        - Original text
-        - Corrected version
-        - Brief explanation of the change
-
-    Format each correction as:
-    [Type of correction]
-    Original: [original text]
-    Correction: [corrected text]
-    Explanation: [brief reason for the change]
+    First line: Complete corrected text
+    Then for each error, provide:
+    Original: [exact problematic text]
+    Correction: [corrected version]
+    Explanation: [brief explanation]
 
     Text: {data.text}
     """
